@@ -25,6 +25,7 @@ const allCategoriesOfChange = [
   "Misc (Anything else not noted above)"
 ];
 type EmptyString = ``;
+type ChangesetWithConfirmed = Changeset & { confirmed: boolean };
 
 export function getKindTitle(kind: string) {
   return kind.split(" ")[0];
@@ -52,6 +53,41 @@ async function confirmMajorRelease(pkgJSON: PackageJSON) {
     return shouldReleaseFirstMajor;
   }
   return true;
+}
+
+async function setSummary(changeSet: ChangesetWithConfirmed) {
+  log(
+    "Please enter a summary for this change (this will be in the changelogs)."
+  );
+  log(chalk.gray("  (submit empty line to open external editor)"));
+
+  let summary = await cli.askQuestion("Summary");
+  if (summary.length === 0) {
+    try {
+      summary = cli.askQuestionWithEditor(
+        "\n\n# Please enter a summary for your changes.\n# An empty message aborts the editor."
+      );
+      if (summary.length > 0) {
+        changeSet.summary = summary;
+        changeSet.confirmed = true;
+        return;
+      }
+    } catch (err) {
+      log(
+        "An error happened using external editor. Please type your summary here:"
+      );
+    }
+
+    summary = await cli.askQuestion("");
+    while (summary.length === 0) {
+      summary = await cli.askQuestion(
+        "\n\n# A summary is required for the changelog! 😪"
+      );
+    }
+  }
+
+  changeSet.summary = summary;
+  changeSet.confirmed = false;
 }
 
 async function chooseAtLeastOne(
@@ -129,9 +165,10 @@ function formatPkgNameAndVersion(pkgName: string, version: string) {
 export default async function createChangeset(
   changedPackages: Array<string>,
   allPackages: Package[]
-): Promise<Changeset & { confirmed: boolean }> {
+): Promise<Array<ChangesetWithConfirmed>> {
   const releases: Array<Release> = [];
   const categoryOfChangeList: Array<CategoryOfChange> = [];
+  const changesetList: Array<ChangesetWithConfirmed> = [];
 
   if (allPackages.length > 1) {
     const packagesToRelease = await getPackagesToRelease(
@@ -282,6 +319,23 @@ export default async function createChangeset(
         }
       }
     } else {
+      for (const release of releases) {
+        log(chalk.yellow(`${release.type} :`), chalk.cyan(release.name));
+        const currChangesetCategoryOfChangeList = [];
+
+        for (const category of chosenCategoryOfChangeList) {
+          const description = await cli.askQuestion(
+            `[ ${getKindTitle(category)} ]`
+          );
+          currChangesetCategoryOfChangeList.push({ description, category });
+        }
+        changesetList.push({
+          confirmed: true,
+          summary: "",
+          categoryOfChangeList: currChangesetCategoryOfChangeList,
+          releases: [release]
+        });
+      }
     }
   } else {
     let pkg = allPackages[0];
@@ -299,44 +353,9 @@ export default async function createChangeset(
     }
     releases.push({ name: pkg.packageJson.name, type });
   }
-
-  log(
-    "Please enter a summary for this change (this will be in the changelogs)."
-  );
-  log(chalk.gray("  (submit empty line to open external editor)"));
-
-  let summary = await cli.askQuestion("Summary");
-  if (summary.length === 0) {
-    try {
-      summary = cli.askQuestionWithEditor(
-        "\n\n# Please enter a summary for your changes.\n# An empty message aborts the editor."
-      );
-      if (summary.length > 0) {
-        return {
-          confirmed: true,
-          summary,
-          categoryOfChangeList,
-          releases
-        };
-      }
-    } catch (err) {
-      log(
-        "An error happened using external editor. Please type your summary here:"
-      );
-    }
-
-    summary = await cli.askQuestion("");
-    while (summary.length === 0) {
-      summary = await cli.askQuestion(
-        "\n\n# A summary is required for the changelog! 😪"
-      );
-    }
+  for (let changeset of changesetList) {
+    await setSummary(changeset);
   }
 
-  return {
-    confirmed: false,
-    summary,
-    categoryOfChangeList,
-    releases
-  };
+  return changesetList;
 }
