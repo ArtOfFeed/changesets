@@ -3,12 +3,13 @@ import path from "path";
 import prettier from "prettier";
 import humanId from "human-id";
 import { Changeset } from "@changesets/types";
+import { getKindTitle } from "../../cli/src/commands/add/createChangeset";
 
 async function writeChangeset(
   changeset: Changeset,
   cwd: string
 ): Promise<string> {
-  const { summary, releases } = changeset;
+  const { summary, categoryOfChangeList, releases } = changeset;
 
   const changesetBase = path.resolve(cwd, ".changeset");
 
@@ -29,7 +30,9 @@ async function writeChangeset(
   const changesetContents = `---
 ${releases.map(release => `"${release.name}": ${release.type}`).join("\n")}
 ---
-
+${categoryOfChangeList
+  .map(chk => `- [ ${getKindTitle(chk.category)} ] ${chk.description}`)
+  .join("\n")}
 ${summary}
   `;
 

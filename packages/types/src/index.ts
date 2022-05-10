@@ -25,7 +25,9 @@ export type ComprehensiveRelease = {
   changesets: string[];
 };
 
+export type CategoryOfChange = { category: string; description: string };
 export type Changeset = {
+  categoryOfChangeList: CategoryOfChange[];
   summary: string;
   releases: Array<Release>;
 };

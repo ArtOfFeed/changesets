@@ -4,11 +4,31 @@ import semver from "semver";
 
 import * as cli from "../../utils/cli-utilities";
 import { error, log } from "@changesets/logger";
-import { Release, PackageJSON } from "@changesets/types";
+import {
+  Release,
+  PackageJSON,
+  Changeset,
+  CategoryOfChange
+} from "@changesets/types";
 import { Package } from "@manypkg/get-packages";
 import { ExitError } from "@changesets/errors";
 
 const { green, yellow, red, bold, blue, cyan } = chalk;
+
+const allCategoriesOfChange = [
+  "Added (New functionality, arg options, more UI elements)",
+  "Changed (Visual changes, internal changes, API changes)",
+  "Removed (Dead code, feature flags, consumer API's)",
+  "Types (Strictly related to the type system and should not have impact on runtime code) ",
+  "Documentation (README, general docs, package.json metadata)",
+  "Infra (Tooling, performance, things that are under the hood but should have no impact if a consumer upgraded)",
+  "Misc (Anything else not noted above)"
+];
+type EmptyString = ``;
+
+export function getKindTitle(kind: string) {
+  return kind.split(" ")[0];
+}
 
 async function confirmMajorRelease(pkgJSON: PackageJSON) {
   if (semver.lt(pkgJSON.version, "1.0.0")) {
@@ -32,6 +52,21 @@ async function confirmMajorRelease(pkgJSON: PackageJSON) {
     return shouldReleaseFirstMajor;
   }
   return true;
+}
+
+async function chooseAtLeastOne(
+  callbackToRetry: () => Promise<any[]>,
+  errorMessage: string
+) {
+  let selectedItems = await callbackToRetry();
+
+  while (selectedItems.length === 0) {
+    error(errorMessage);
+    error("(You most likely hit enter instead of space!)");
+
+    selectedItems = await callbackToRetry();
+  }
+  return selectedItems;
 }
 
 async function getPackagesToRelease(
@@ -74,16 +109,11 @@ async function getPackagesToRelease(
       }
     ].filter(({ choices }) => choices.length !== 0);
 
-    let packagesToRelease = await askInitialReleaseQuestion(defaultChoiceList);
+    let packagesToRelease = await chooseAtLeastOne(
+      () => askInitialReleaseQuestion(defaultChoiceList),
+      "You must select at least one package to release"
+    );
 
-    if (packagesToRelease.length === 0) {
-      do {
-        error("You must select at least one package to release");
-        error("(You most likely hit enter instead of space!)");
-
-        packagesToRelease = await askInitialReleaseQuestion(defaultChoiceList);
-      } while (packagesToRelease.length === 0);
-    }
     return packagesToRelease.filter(
       pkgName =>
         pkgName !== "changed packages" && pkgName !== "unchanged packages"
@@ -99,8 +129,9 @@ function formatPkgNameAndVersion(pkgName: string, version: string) {
 export default async function createChangeset(
   changedPackages: Array<string>,
   allPackages: Package[]
-): Promise<{ confirmed: boolean; summary: string; releases: Array<Release> }> {
+): Promise<Changeset & { confirmed: boolean }> {
   const releases: Array<Release> = [];
+  const categoryOfChangeList: Array<CategoryOfChange> = [];
 
   if (allPackages.length > 1) {
     const packagesToRelease = await getPackagesToRelease(
@@ -113,6 +144,25 @@ export default async function createChangeset(
     );
 
     let pkgsLeftToGetBumpTypeFor = new Set(packagesToRelease);
+
+    const chosenCategoryOfChangeList = await chooseAtLeastOne(
+      () =>
+        cli.askCheckboxPlus(
+          bold(`What kind of change are you making? (check all that apply)`),
+          allCategoriesOfChange.map(categoryOfChange => ({
+            name: categoryOfChange,
+            message: categoryOfChange
+          })),
+          (chosenCategoryOfChangeList: EmptyString | string[]) => {
+            if (Array.isArray(chosenCategoryOfChangeList)) {
+              return chosenCategoryOfChangeList
+                .map(x => cyan(getKindTitle(x)))
+                .join(", ");
+            }
+          }
+        ),
+      "You must select at least one change kind"
+    );
 
     let pkgsThatShouldBeMajorBumped = (
       await cli.askCheckboxPlus(
@@ -210,6 +260,29 @@ export default async function createChangeset(
         releases.push({ name: pkgName, type: "patch" });
       }
     }
+    const bumpTypes = new Set(releases.map(rel => rel.type));
+    const isSameMessageForAllPkgs = await cli.askConfirm(
+      "Would you like to reuse the same message for all packages of this bump type?"
+    );
+
+    if (isSameMessageForAllPkgs) {
+      for (const bumpType of bumpTypes) {
+        const pkgsForThisBumpType = releases
+          .filter(rel => rel.type === bumpType)
+          .map(rel => rel.name)
+          .join(", ");
+
+        log(chalk.yellow(`${bumpType} :`), chalk.cyan(pkgsForThisBumpType));
+
+        for (const category of chosenCategoryOfChangeList) {
+          const description = await cli.askQuestion(
+            `[ ${getKindTitle(category)} ]`
+          );
+          categoryOfChangeList.push({ description, category });
+        }
+      }
+    } else {
+    }
   } else {
     let pkg = allPackages[0];
     let type = await cli.askList(
@@ -242,6 +315,7 @@ export default async function createChangeset(
         return {
           confirmed: true,
           summary,
+          categoryOfChangeList,
           releases
         };
       }
@@ -262,6 +336,7 @@ export default async function createChangeset(
   return {
     confirmed: false,
     summary,
+    categoryOfChangeList,
     releases
   };
 }

@@ -31,6 +31,7 @@ export default async function add(
     newChangeset = {
       confirmed: true,
       releases: [],
+      categoryOfChangeList: [],
       summary: ``
     };
   } else {
