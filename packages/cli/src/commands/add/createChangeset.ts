@@ -169,6 +169,7 @@ export default async function createChangeset(
   const releases: Array<Release> = [];
   const categoryOfChangeList: Array<CategoryOfChange> = [];
   const changesetList: Array<ChangesetWithConfirmed> = [];
+  let shouldAskChangeTypes = false;
 
   if (allPackages.length > 1) {
     const packagesToRelease = await getPackagesToRelease(
@@ -182,24 +183,21 @@ export default async function createChangeset(
 
     let pkgsLeftToGetBumpTypeFor = new Set(packagesToRelease);
 
-    const chosenCategoryOfChangeList = await chooseAtLeastOne(
-      () =>
-        cli.askCheckboxPlus(
-          bold(`What kind of change are you making? (check all that apply)`),
-          allCategoriesOfChange.map(categoryOfChange => ({
-            name: categoryOfChange,
-            message: categoryOfChange
-          })),
-          (chosenCategoryOfChangeList: EmptyString | string[]) => {
-            if (Array.isArray(chosenCategoryOfChangeList)) {
-              return chosenCategoryOfChangeList
-                .map(x => cyan(getKindTitle(x)))
-                .join(", ");
-            }
-          }
-        ),
-      "You must select at least one change kind"
+    const chosenCategoryOfChangeList = await cli.askCheckboxPlus(
+      bold(`What kind of change are you making? (check all that apply)`),
+      allCategoriesOfChange.map(categoryOfChange => ({
+        name: categoryOfChange,
+        message: categoryOfChange
+      })),
+      (chosenCategoryOfChangeList: EmptyString | string[]) => {
+        if (Array.isArray(chosenCategoryOfChangeList)) {
+          return chosenCategoryOfChangeList
+            .map(x => cyan(getKindTitle(x)))
+            .join(", ");
+        }
+      }
     );
+    shouldAskChangeTypes = chosenCategoryOfChangeList.length > 0;
 
     let pkgsThatShouldBeMajorBumped = (
       await cli.askCheckboxPlus(
@@ -297,44 +295,46 @@ export default async function createChangeset(
         releases.push({ name: pkgName, type: "patch" });
       }
     }
-    const bumpTypes = new Set(releases.map(rel => rel.type));
-    const isSameMessageForAllPkgs = await cli.askConfirm(
-      "Would you like to reuse the same message for all packages of this bump type?"
-    );
+    if (shouldAskChangeTypes) {
+      const bumpTypes = new Set(releases.map(rel => rel.type));
+      const isSameMessageForAllPkgs = await cli.askConfirm(
+        "Would you like to reuse the same message for all packages of this bump type?"
+      );
 
-    if (isSameMessageForAllPkgs) {
-      for (const bumpType of bumpTypes) {
-        const pkgsForThisBumpType = releases
-          .filter(rel => rel.type === bumpType)
-          .map(rel => rel.name)
-          .join(", ");
+      if (isSameMessageForAllPkgs) {
+        for (const bumpType of bumpTypes) {
+          const pkgsForThisBumpType = releases
+            .filter(rel => rel.type === bumpType)
+            .map(rel => rel.name)
+            .join(", ");
 
-        log(chalk.yellow(`${bumpType} :`), chalk.cyan(pkgsForThisBumpType));
+          log(chalk.yellow(`${bumpType} :`), chalk.cyan(pkgsForThisBumpType));
 
-        for (const category of chosenCategoryOfChangeList) {
-          const description = await cli.askQuestion(
-            `[ ${getKindTitle(category)} ]`
-          );
-          categoryOfChangeList.push({ description, category });
+          for (const category of chosenCategoryOfChangeList) {
+            const description = await cli.askQuestion(
+              `[ ${getKindTitle(category)} ]`
+            );
+            categoryOfChangeList.push({ description, category });
+          }
         }
-      }
-    } else {
-      for (const release of releases) {
-        log(chalk.yellow(`${release.type} :`), chalk.cyan(release.name));
-        const currChangesetCategoryOfChangeList = [];
+      } else {
+        for (const release of releases) {
+          log(chalk.yellow(`${release.type} :`), chalk.cyan(release.name));
+          const currChangesetCategoryOfChangeList = [];
 
-        for (const category of chosenCategoryOfChangeList) {
-          const description = await cli.askQuestion(
-            `[ ${getKindTitle(category)} ]`
-          );
-          currChangesetCategoryOfChangeList.push({ description, category });
+          for (const category of chosenCategoryOfChangeList) {
+            const description = await cli.askQuestion(
+              `[ ${getKindTitle(category)} ]`
+            );
+            currChangesetCategoryOfChangeList.push({ description, category });
+          }
+          changesetList.push({
+            confirmed: true,
+            summary: "",
+            categoryOfChangeList: currChangesetCategoryOfChangeList,
+            releases: [release]
+          });
         }
-        changesetList.push({
-          confirmed: true,
-          summary: "",
-          categoryOfChangeList: currChangesetCategoryOfChangeList,
-          releases: [release]
-        });
       }
     }
   } else {
@@ -353,6 +353,15 @@ export default async function createChangeset(
     }
     releases.push({ name: pkg.packageJson.name, type });
   }
+  if (!shouldAskChangeTypes) {
+    changesetList.push({
+      confirmed: false,
+      summary: "",
+      categoryOfChangeList: [],
+      releases
+    });
+  }
+
   for (let changeset of changesetList) {
     await setSummary(changeset);
   }

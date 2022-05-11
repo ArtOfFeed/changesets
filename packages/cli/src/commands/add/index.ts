@@ -78,44 +78,42 @@ export default async function add(
       .filter(a => a)
       .map(pkg => pkg.packageJson.name);
     newChangesetList = await createChangeset(changePackagesName, packages);
+  }
 
-    for (let newChangeset of newChangesetList) {
-      printConfirmationMessage(newChangeset, packages.length > 1);
+  for (let newChangeset of newChangesetList) {
+    printConfirmationMessage(newChangeset, packages.length > 1);
 
-      if (!newChangeset.confirmed) {
-        newChangeset = {
-          ...newChangeset,
-          confirmed: await cli.askConfirm("Is this your desired changeset?")
-        };
-      }
-
-      if (!newChangeset.confirmed) continue;
-
-      const changesetID = await writeChangeset(newChangeset, cwd);
-      const [{ getAddMessage }, commitOpts] = getCommitFunctions(
-        config.commit,
-        cwd
-      );
-      if (getAddMessage) {
-        await git.add(path.resolve(changesetBase, `${changesetID}.md`), cwd);
-        await git.commit(await getAddMessage(newChangeset, commitOpts), cwd);
-        log(
-          chalk.green(`${empty ? "Empty " : ""}Changeset added and committed`)
-        );
-      } else {
-        log(
-          chalk.green(
-            `${empty ? "Empty " : ""}Changeset added! - you can now commit it\n`
-          )
-        );
-      }
-
-      warnIfMajor(newChangeset);
-
-      const changesetPath = path.resolve(changesetBase, `${changesetID}.md`);
-      info(chalk.blue(changesetPath));
-
-      if (open) determineEditorHack(changesetPath);
+    if (!newChangeset.confirmed) {
+      newChangeset = {
+        ...newChangeset,
+        confirmed: await cli.askConfirm("Is this your desired changeset?")
+      };
     }
+
+    if (!newChangeset.confirmed) continue;
+
+    const changesetID = await writeChangeset(newChangeset, cwd);
+    const [{ getAddMessage }, commitOpts] = getCommitFunctions(
+      config.commit,
+      cwd
+    );
+    if (getAddMessage) {
+      await git.add(path.resolve(changesetBase, `${changesetID}.md`), cwd);
+      await git.commit(await getAddMessage(newChangeset, commitOpts), cwd);
+      log(chalk.green(`${empty ? "Empty " : ""}Changeset added and committed`));
+    } else {
+      log(
+        chalk.green(
+          `${empty ? "Empty " : ""}Changeset added! - you can now commit it\n`
+        )
+      );
+    }
+
+    warnIfMajor(newChangeset);
+
+    const changesetPath = path.resolve(changesetBase, `${changesetID}.md`);
+    info(chalk.blue(changesetPath));
+
+    if (open) determineEditorHack(changesetPath);
   }
 }
