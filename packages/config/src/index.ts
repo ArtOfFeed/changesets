@@ -395,6 +395,9 @@ export let parse = (json: WrittenConfig, packages: Packages): Config => {
         ? defaultWrittenConfig.ignore
         : micromatch(pkgNames, json.ignore),
 
+    __change_types:
+      json.__change_types === undefined ? [] : json.__change_types,
+
     bumpVersionsWithWorkspaceProtocolOnly:
       json.bumpVersionsWithWorkspaceProtocolOnly === true,
 

@@ -8,22 +8,14 @@ import {
   Release,
   PackageJSON,
   Changeset,
-  CategoryOfChange
+  CategoryOfChange,
+  Config
 } from "@changesets/types";
 import { Package } from "@manypkg/get-packages";
 import { ExitError } from "@changesets/errors";
 
 const { green, yellow, red, bold, blue, cyan } = chalk;
 
-const allCategoriesOfChange = [
-  "Added (New functionality, arg options, more UI elements)",
-  "Changed (Visual changes, internal changes, API changes)",
-  "Removed (Dead code, feature flags, consumer API's)",
-  "Types (Strictly related to the type system and should not have impact on runtime code) ",
-  "Documentation (README, general docs, package.json metadata)",
-  "Infra (Tooling, performance, things that are under the hood but should have no impact if a consumer upgraded)",
-  "Misc (Anything else not noted above)"
-];
 type EmptyString = ``;
 type ChangesetWithConfirmed = Changeset & { confirmed: boolean };
 
@@ -180,7 +172,8 @@ function formatPkgNameAndVersion(pkgName: string, version: string) {
 
 export default async function createChangeset(
   changedPackages: Array<string>,
-  allPackages: Package[]
+  allPackages: Package[],
+  config: Config
 ): Promise<Array<ChangesetWithConfirmed>> {
   const releases: Array<Release> = [];
   const categoryOfChangeList: Array<CategoryOfChange> = [];
@@ -199,20 +192,22 @@ export default async function createChangeset(
 
     let pkgsLeftToGetBumpTypeFor = new Set(packagesToRelease);
 
-    const chosenCategoryOfChangeList = await cli.askCheckboxPlus(
-      bold(`What kind of change are you making? (check all that apply)`),
-      allCategoriesOfChange.map(categoryOfChange => ({
-        name: categoryOfChange,
-        message: categoryOfChange
-      })),
-      (chosenCategoryOfChangeList: EmptyString | string[]) => {
-        if (Array.isArray(chosenCategoryOfChangeList)) {
-          return chosenCategoryOfChangeList
-            .map(x => cyan(getKindTitle(x)))
-            .join(", ");
-        }
-      }
-    );
+    const chosenCategoryOfChangeList = config.__change_types?.length
+      ? await cli.askCheckboxPlus(
+          bold(`What kind of change are you making? (check all that apply)`),
+          config.__change_types.map(categoryOfChange => ({
+            name: categoryOfChange,
+            message: categoryOfChange
+          })),
+          (chosenCategoryOfChangeList: EmptyString | string[]) => {
+            if (Array.isArray(chosenCategoryOfChangeList)) {
+              return chosenCategoryOfChangeList
+                .map(x => cyan(getKindTitle(x)))
+                .join(", ");
+            }
+          }
+        )
+      : [];
     shouldAskChangeTypes = chosenCategoryOfChangeList.length > 0;
 
     let pkgsThatShouldBeMajorBumped = (

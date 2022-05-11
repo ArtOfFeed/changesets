@@ -77,7 +77,11 @@ export default async function add(
     const changePackagesName = changedPackages
       .filter(a => a)
       .map(pkg => pkg.packageJson.name);
-    newChangesetList = await createChangeset(changePackagesName, packages);
+    newChangesetList = await createChangeset(
+      changePackagesName,
+      packages,
+      config
+    );
   }
 
   for (let newChangeset of newChangesetList) {

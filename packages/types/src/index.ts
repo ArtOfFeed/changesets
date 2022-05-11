@@ -77,6 +77,7 @@ export type Config = {
   /** The minimum bump type to trigger automatic update of internal dependencies that are part of the same release */
   updateInternalDependencies: "patch" | "minor";
   ignore: ReadonlyArray<string>;
+  __change_types: string[] | null;
   /** This is supposed to be used with pnpm's `link-workspace-packages: false` and Berry's `enableTransparentWorkspaces: false` */
   bumpVersionsWithWorkspaceProtocolOnly?: boolean;
   ___experimentalUnsafeOptions_WILL_CHANGE_IN_PATCH: Required<
@@ -94,6 +95,7 @@ export type WrittenConfig = {
   /** The minimum bump type to trigger automatic update of internal dependencies that are part of the same release */
   updateInternalDependencies?: "patch" | "minor";
   ignore?: ReadonlyArray<string>;
+  __change_types?: Config["__change_types"];
   bumpVersionsWithWorkspaceProtocolOnly?: boolean;
   ___experimentalUnsafeOptions_WILL_CHANGE_IN_PATCH?: ExperimentalOptions;
 };

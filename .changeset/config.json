@@ -6,6 +6,15 @@
   "baseBranch": "main",
   "commit": false,
   "access": "public",
+  "__change_types": [
+    "Added (New functionality, arg options, more UI elements)",
+    "Changed (Visual changes, internal changes, API changes)",
+    "Removed (Dead code, feature flags, consumer API's)",
+    "Types (Strictly related to the type system and should not have impact on runtime code) ",
+    "Documentation (README, general docs, package.json metadata)",
+    "Infra (Tooling, performance, things that are under the hood but should have no impact if a consumer upgraded)",
+    "Misc (Anything else not noted above)"
+  ],
   "___experimentalUnsafeOptions_WILL_CHANGE_IN_PATCH": {
     "updateInternalDependents": "always"
   }
