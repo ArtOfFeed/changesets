@@ -27,16 +27,45 @@ function groupByBumpType(releases: Release[]) {
 function getReleasesSection(releases: Release[]) {
   return `---
 ${releases.map(release => `"${release.name}": ${release.type}`).join("\n")}
----`;
+---\n`;
 }
 function getChangeTypesSection(
   changeTypes: CategoryOfChange[],
-  bumpType: VersionType
+  bumpType?: VersionType
 ) {
-  return `${changeTypes
-    .filter(({ type }) => type === bumpType)
+  const filtered = bumpType
+    ? changeTypes.filter(({ type }) => type === bumpType)
+    : changeTypes;
+
+  return `${filtered
     .map(chk => `- [ ${getKindTitle(chk.category)} ] ${chk.description}`)
-    .join("\n")}`;
+    .join("\n")}\n`;
+}
+
+function getReleasesAndChangeTypes(
+  releases: Release[],
+  categoryOfChangeList: CategoryOfChange[],
+  splitReleasesByBumpType = false
+) {
+  if (splitReleasesByBumpType && categoryOfChangeList.length) {
+    const grouped = Object.entries(groupByBumpType(releases)).filter(
+      ([, releases]) => releases.length
+    ) as [VersionType, Release[]][];
+
+    return grouped
+      .map(
+        ([bumpType, releases]) =>
+          `${getReleasesSection(releases)}
+${getChangeTypesSection(categoryOfChangeList, bumpType)}`
+      )
+      .join("\n");
+  }
+
+  if (categoryOfChangeList.length)
+    return `${getReleasesSection(releases)} 
+  ${getChangeTypesSection(categoryOfChangeList)}`;
+
+  return getReleasesSection(releases);
 }
 
 async function writeChangeset(
@@ -58,22 +87,14 @@ async function writeChangeset(
 
   const newChangesetPath = path.resolve(changesetBase, `${changesetID}.md`);
 
-  const releasesGroupedByBumpTypes = Object.entries(groupByBumpType(releases))
-    .filter(([, releases]) => releases.length)
-    .map(
-      ([bumpType, releases]) =>
-        `${getReleasesSection(releases)} 
-${getChangeTypesSection(categoryOfChangeList, bumpType as VersionType)}`
-    )
-    .join("\n");
+  const releasesGroupedByBumpTypes = getReleasesAndChangeTypes(
+    releases,
+    categoryOfChangeList
+  );
   // NOTE: The quotation marks in here are really important even though they are
   // not spec for yaml. This is because package names can contain special
   // characters that will otherwise break the parsing step
-  const changesetContents = `${
-    categoryOfChangeList.length
-      ? releasesGroupedByBumpTypes
-      : getReleasesSection(releases)
-  }
+  const changesetContents = `${releasesGroupedByBumpTypes}
 
 ${summary}
   `;
