@@ -6,6 +6,7 @@
   "baseBranch": "main",
   "commit": false,
   "access": "public",
+  "__change_types": ["ux", "refactor", "feature", "fix", "remove", "infra", "misc" ],
   "___experimentalUnsafeOptions_WILL_CHANGE_IN_PATCH": {
     "updateInternalDependents": "always"
   }

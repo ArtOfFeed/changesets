@@ -4,9 +4,10 @@ import semver from "semver";
 
 import * as cli from "../../utils/cli-utilities";
 import { error, log } from "@changesets/logger";
-import { Release, PackageJSON } from "@changesets/types";
+import { Release, PackageJSON, Config, ChangeTypes } from "@changesets/types";
 import { Package } from "@manypkg/get-packages";
 import { ExitError } from "@changesets/errors";
+import { getSummary } from "./getSummary";
 
 const { green, yellow, red, bold, blue, cyan } = chalk;
 
@@ -98,7 +99,8 @@ function formatPkgNameAndVersion(pkgName: string, version: string) {
 
 export default async function createChangeset(
   changedPackages: Array<string>,
-  allPackages: Package[]
+  allPackages: Package[],
+  config: Config
 ): Promise<{ confirmed: boolean; summary: string; releases: Array<Release> }> {
   const releases: Array<Release> = [];
 
@@ -227,37 +229,16 @@ export default async function createChangeset(
     releases.push({ name: pkg.packageJson.name, type });
   }
 
+  const pickedChangeTypes: ChangeTypes | undefined = config.__change_types
+    ? await cli.askCheckboxPlus("", config.__change_types)
+    : undefined;
+
   log(
     "Please enter a summary for this change (this will be in the changelogs)."
   );
   log(chalk.gray("  (submit empty line to open external editor)"));
 
-  let summary = await cli.askQuestion("Summary");
-  if (summary.length === 0) {
-    try {
-      summary = cli.askQuestionWithEditor(
-        "\n\n# Please enter a summary for your changes.\n# An empty message aborts the editor."
-      );
-      if (summary.length > 0) {
-        return {
-          confirmed: true,
-          summary,
-          releases
-        };
-      }
-    } catch (err) {
-      log(
-        "An error happened using external editor. Please type your summary here:"
-      );
-    }
-
-    summary = await cli.askQuestion("");
-    while (summary.length === 0) {
-      summary = await cli.askQuestion(
-        "\n\n# A summary is required for the changelog! 😪"
-      );
-    }
-  }
+  const summary = await getSummary(pickedChangeTypes);
 
   return {
     confirmed: false,
