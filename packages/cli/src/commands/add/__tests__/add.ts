@@ -43,26 +43,22 @@ const mockUserResponses = mockResponses => {
       minorReleases.push(pkgName);
     }
   });
-  let askCheckboxPlusCallCount = 0;
-  let askQuestionCallCount = 0;
-  const askCheckboxPlusReturnValues = [
+  let callCount = 0;
+  let returnValues = [
     Object.keys(mockResponses.releases),
-    mockResponses.categoryOfChangeList,
     majorReleases,
     minorReleases
   ];
-  const askQuestionReturnValues = ["mock category description", summary];
   // @ts-ignore
   askCheckboxPlus.mockImplementation(() => {
-    if (askCheckboxPlusCallCount === askCheckboxPlusReturnValues.length) {
+    if (callCount === returnValues.length) {
       throw new Error(`There was an unexpected call to askCheckboxPlus`);
     }
-    return askCheckboxPlusReturnValues[askCheckboxPlusCallCount++];
+    return returnValues[callCount++];
   });
 
-  const confirmAnswers = {
-    "Is this your desired changeset?": true,
-    "Would you like to reuse the same message for all packages of this bump type?": true
+  let confirmAnswers = {
+    "Is this your desired changeset?": true
   };
 
   if (mockResponses.consoleSummaries && mockResponses.editorSummaries) {
@@ -76,12 +72,7 @@ const mockUserResponses = mockResponses => {
     );
   } else {
     // @ts-ignore
-    askQuestion.mockImplementation(() => {
-      if (askQuestionCallCount === askQuestionReturnValues.length) {
-        throw new Error(`There was an unexpected call to askQuestion`);
-      }
-      return askQuestionReturnValues[askQuestionCallCount++];
-    });
+    askQuestion.mockReturnValueOnce(summary);
   }
 
   // @ts-ignore
@@ -101,12 +92,8 @@ describe("Changesets", () => {
 
   it("should generate changeset to patch a single package", async () => {
     const cwd = await f.copy("simple-project");
-    const category = "Added (New functionality, arg options, more UI elements)";
 
-    mockUserResponses({
-      releases: { "pkg-a": "patch" },
-      categoryOfChangeList: [category]
-    });
+    mockUserResponses({ releases: { "pkg-a": "patch" } });
     await addChangeset(cwd, { empty: false }, defaultConfig);
 
     // @ts-ignore
@@ -114,10 +101,7 @@ describe("Changesets", () => {
     expect(call).toEqual(
       expect.objectContaining({
         summary: "summary message mock",
-        releases: [{ name: "pkg-a", type: "patch" }],
-        categoryOfChangeList: [
-          { category, description: "mock category description" }
-        ]
+        releases: [{ name: "pkg-a", type: "patch" }]
       })
     );
   });
