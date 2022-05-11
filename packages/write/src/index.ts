@@ -2,8 +2,42 @@ import fs from "fs-extra";
 import path from "path";
 import prettier from "prettier";
 import humanId from "human-id";
-import { Changeset } from "@changesets/types";
+import {
+  CategoryOfChange,
+  Changeset,
+  Release,
+  VersionType
+} from "@changesets/types";
 import { getKindTitle } from "../../cli/src/commands/add/createChangeset";
+
+function groupByBumpType(releases: Release[]) {
+  const major: Release[] = [];
+  const minor: Release[] = [];
+  const patch: Release[] = [];
+  const none: Release[] = [];
+
+  releases.forEach(rel => {
+    if (rel.type === "major") major.push(rel);
+    else if (rel.type === "minor") minor.push(rel);
+    else if (rel.type === "patch") patch.push(rel);
+    else major.push(rel);
+  });
+  return { major, minor, patch, none };
+}
+function getReleasesSection(releases: Release[]) {
+  return `---
+${releases.map(release => `"${release.name}": ${release.type}`).join("\n")}
+---`;
+}
+function getChangeTypesSection(
+  changeTypes: CategoryOfChange[],
+  bumpType: VersionType
+) {
+  return `${changeTypes
+    .filter(({ type }) => type === bumpType)
+    .map(chk => `- [ ${getKindTitle(chk.category)} ] ${chk.description}`)
+    .join("\n")}`;
+}
 
 async function writeChangeset(
   changeset: Changeset,
@@ -24,15 +58,23 @@ async function writeChangeset(
 
   const newChangesetPath = path.resolve(changesetBase, `${changesetID}.md`);
 
+  const releasesGroupedByBumpTypes = Object.entries(groupByBumpType(releases))
+    .filter(([, releases]) => releases.length)
+    .map(
+      ([bumpType, releases]) =>
+        `${getReleasesSection(releases)} 
+${getChangeTypesSection(categoryOfChangeList, bumpType as VersionType)}`
+    )
+    .join("\n");
   // NOTE: The quotation marks in here are really important even though they are
   // not spec for yaml. This is because package names can contain special
   // characters that will otherwise break the parsing step
-  const changesetContents = `---
-${releases.map(release => `"${release.name}": ${release.type}`).join("\n")}
----
-${categoryOfChangeList
-  .map(chk => `- [ ${getKindTitle(chk.category)} ] ${chk.description}`)
-  .join("\n")}
+  const changesetContents = `${
+    categoryOfChangeList.length
+      ? releasesGroupedByBumpTypes
+      : getReleasesSection(releases)
+  }
+
 ${summary}
   `;
 

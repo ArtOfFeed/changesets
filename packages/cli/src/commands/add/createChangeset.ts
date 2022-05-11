@@ -105,6 +105,22 @@ async function chooseAtLeastOne(
   return selectedItems;
 }
 
+async function getDescription(
+  previousAnswers: { [key in string]: string },
+  category: string
+) {
+  const previousAnswer = previousAnswers[category];
+  const question = `Do you want to reuse your previous answer for the current package? (${previousAnswer})`;
+  if (previousAnswer) {
+    const shouldReusePreviousAnswer = await cli.askConfirm(question);
+    if (shouldReusePreviousAnswer) return previousAnswer;
+  }
+
+  const description = await cli.askQuestion(`[ ${getKindTitle(category)} ]`);
+  previousAnswers[category] = description;
+  return description;
+}
+
 async function getPackagesToRelease(
   changedPackages: Array<string>,
   allPackages: Array<Package>
@@ -314,22 +330,35 @@ export default async function createChangeset(
             const description = await cli.askQuestion(
               `[ ${getKindTitle(category)} ]`
             );
-            categoryOfChangeList.push({ description, category });
+            categoryOfChangeList.push({
+              description,
+              category,
+              type: bumpType
+            });
           }
         }
+        changesetList.push({
+          releases,
+          confirmed: false,
+          summary: "",
+          categoryOfChangeList
+        });
       } else {
+        const previousAnswers = {};
         for (const release of releases) {
           log(chalk.yellow(`${release.type} :`), chalk.cyan(release.name));
           const currChangesetCategoryOfChangeList = [];
 
           for (const category of chosenCategoryOfChangeList) {
-            const description = await cli.askQuestion(
-              `[ ${getKindTitle(category)} ]`
-            );
-            currChangesetCategoryOfChangeList.push({ description, category });
+            const description = await getDescription(previousAnswers, category);
+            currChangesetCategoryOfChangeList.push({
+              description,
+              category,
+              type: release.type
+            });
           }
           changesetList.push({
-            confirmed: true,
+            confirmed: false,
             summary: "",
             categoryOfChangeList: currChangesetCategoryOfChangeList,
             releases: [release]
