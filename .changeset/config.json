@@ -6,7 +6,15 @@
   "baseBranch": "main",
   "commit": false,
   "access": "public",
-  "__change_types": ["ux", "refactor", "feature", "fix", "remove", "infra", "misc" ],
+  "__change_types": [
+    {"tag": "add", "description": "Added (New functionality, arg options, more UI elements)"},
+    {"tag": "change", "description": "Changed (Visual changes, internal changes, API changes)"},
+    {"tag": "remove", "description": "Removed (Dead code, feature flags, consumer API's)"},
+    {"tag": "typing", "description": "Types (Strictly related to the type system and should not have impact on runtime code)"},
+    {"tag": "docs", "description": "Documentation (README, general docs, package.json metadata)"},
+    {"tag": "infra", "description": "Infra (Tooling, performance, things that are under the hood but should have no impact if a consumer upgraded)"},
+    {"tag": "misc", "description": "Misc (Anything else not noted above)"}
+  ],
   "___experimentalUnsafeOptions_WILL_CHANGE_IN_PATCH": {
     "updateInternalDependents": "always"
   }

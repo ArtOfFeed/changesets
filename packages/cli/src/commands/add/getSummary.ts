@@ -1,10 +1,12 @@
 import * as cli from "../../utils/cli-utilities";
 import { log } from "@changesets/logger";
-import { ChangeTypes, ChangeType } from "@changesets/types";
+import { ChangesetType } from "@changesets/types";
 
-type SummaryPart = { changeType: ChangeType; summaryPart: string };
+type SummaryPart = { changeType: ChangesetType; summaryPart: string };
 
-export async function getSummary(changeTypes?: ChangeTypes): Promise<string> {
+export async function getSummary(
+  changeTypes?: ChangesetType[]
+): Promise<string> {
   if (changeTypes && changeTypes.length) {
     const summaryParts: SummaryPart[] = [];
     for (const changeType of changeTypes) {
@@ -17,9 +19,9 @@ export async function getSummary(changeTypes?: ChangeTypes): Promise<string> {
   }
 }
 
-async function getSingleSummary(changeType?: ChangeType): Promise<string> {
+async function getSingleSummary(changeType?: ChangesetType): Promise<string> {
   const fotChangeTypeinsertion = changeType
-    ? " for change [" + changeType + "]"
+    ? " for change [" + changeType.tag + "]"
     : "";
 
   let summary = await cli.askQuestion("Summary" + fotChangeTypeinsertion);
@@ -54,7 +56,7 @@ async function getSingleSummary(changeType?: ChangeType): Promise<string> {
 function ConcatSummaryParts(parts: SummaryPart[]): string {
   return parts.reduce((reducer, part) => {
     const prefix = reducer.length ? "\n\n" : "";
-    const partStr = " - [" + part.changeType + "] " + part.summaryPart;
+    const partStr = " - [" + part.changeType.tag + "] " + part.summaryPart;
     return reducer + prefix + partStr;
   }, "");
 }

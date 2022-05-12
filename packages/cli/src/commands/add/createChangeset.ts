@@ -4,7 +4,7 @@ import semver from "semver";
 
 import * as cli from "../../utils/cli-utilities";
 import { error, log } from "@changesets/logger";
-import { Release, PackageJSON, Config, ChangeTypes } from "@changesets/types";
+import { Release, PackageJSON, Config } from "@changesets/types";
 import { Package } from "@manypkg/get-packages";
 import { ExitError } from "@changesets/errors";
 import { getSummary } from "./getSummary";
@@ -229,8 +229,20 @@ export default async function createChangeset(
     releases.push({ name: pkg.packageJson.name, type });
   }
 
-  const pickedChangeTypes: ChangeTypes | undefined = config.__change_types
-    ? await cli.askCheckboxPlus("", config.__change_types)
+  const pickedChangeTypeIds: string[] | undefined = config.__change_types
+    ? await cli.askCheckboxPlus(
+        "Select what kind of chage types did you make:",
+        config.__change_types.map(type => ({
+          name: type.tag,
+          message: type.description
+        }))
+      )
+    : undefined;
+
+  const pickedChangeTypes = pickedChangeTypeIds
+    ? config.__change_types?.filter(type =>
+        pickedChangeTypeIds.find(id => id === type.tag)
+      )
     : undefined;
 
   log(
