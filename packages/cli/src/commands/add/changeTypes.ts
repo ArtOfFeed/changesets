@@ -29,7 +29,7 @@ export class ChangesetsWithChangeTypes {
     this.config = config;
   }
 
-  async setChangeTypeList() {
+  async setChangeTypeListOrNone() {
     if (!this.config.shouldAskForChangeTypes) return;
     const choosenTitleList = await getChangeTypeList();
 
@@ -39,6 +39,7 @@ export class ChangesetsWithChangeTypes {
     }));
 
     this.isWithChangeTypes = choosenTitleList?.length > 0;
+    return choosenTitleList.includes("None");
   }
 
   async setReleases(newReleases: Release[]) {

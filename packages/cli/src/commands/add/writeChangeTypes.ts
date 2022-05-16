@@ -119,6 +119,7 @@ export function getChangesetContent(
   summary: string,
   splitReleasesByBumpType = false
 ) {
+  if (releases.some(rel => rel.type === "none")) return "none";
   if (splitReleasesByBumpType && releases.some(rel => rel.changeTypes)) {
     const grouped = Object.entries(groupByBumpType(releases)).filter(
       ([, releases]) => releases.length

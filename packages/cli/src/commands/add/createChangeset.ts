@@ -19,6 +19,12 @@ const { green, yellow, red, bold, blue, cyan } = chalk;
 
 type PackageNameJsonMap = Map<string, PackageJSON>;
 
+const noneChangeset = {
+  confirmed: true,
+  summary: "",
+  releases: [{ name: "", type: "none" as VersionType }]
+};
+
 async function confirmMajorRelease(pkgJSON: PackageJSON) {
   if (semver.lt(pkgJSON.version, "1.0.0")) {
     // prettier-ignore
@@ -178,7 +184,8 @@ export default async function createChangeset(
 
     let pkgsLeftToGetBumpTypeFor = new Set(packagesToRelease);
 
-    await changeset.setChangeTypeList();
+    const isNone = await changeset.setChangeTypeListOrNone();
+    if (isNone) return [noneChangeset];
 
     for (const [i, bump] of bumpTypes.entries()) {
       const packages = [...pkgsLeftToGetBumpTypeFor];
@@ -213,7 +220,8 @@ export default async function createChangeset(
   } else {
     let pkg = allPackages[0];
 
-    await changeset.setChangeTypeList();
+    const isNone = await changeset.setChangeTypeListOrNone();
+    if (isNone) return [noneChangeset];
 
     let type = await cli.askList(
       `What kind of change is this for ${green(
