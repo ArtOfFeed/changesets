@@ -88,7 +88,7 @@ function groupByBumpType(releases: Release[]) {
     if (rel.type === "major") major.push(rel);
     else if (rel.type === "minor") minor.push(rel);
     else if (rel.type === "patch") patch.push(rel);
-    else major.push(rel);
+    else none.push(rel);
   });
   return { major, minor, patch, none };
 }
