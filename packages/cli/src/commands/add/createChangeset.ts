@@ -15,7 +15,7 @@ import { Package } from "@manypkg/get-packages";
 import { ExitError } from "@changesets/errors";
 import { ChangesetsWithChangeTypes } from "./changeTypes";
 
-const { green, yellow, red, bold, blue, cyan } = chalk;
+const { green, yellow, red, bold, blue, cyan, gray } = chalk;
 
 type PackageNameJsonMap = Map<string, PackageJSON>;
 
@@ -112,7 +112,8 @@ function getBumpTypeTitle(bumpType: VersionType) {
 const bumpTypes: { type: VersionType; title: VersionType }[] = [
   { type: "major", title: red("major") as VersionType },
   { type: "minor", title: green("minor") as VersionType },
-  { type: "patch", title: blue("patch") as VersionType }
+  { type: "patch", title: blue("patch") as VersionType },
+  { type: "none", title: gray("none") as VersionType }
 ];
 
 export async function choosePkgsForBumpType(
