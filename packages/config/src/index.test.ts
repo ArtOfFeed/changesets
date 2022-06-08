@@ -42,8 +42,6 @@ test("read reads the config", async () => {
     commit: ["@changesets/cli/commit", { skipCI: "version" }],
     access: "restricted",
     baseBranch: "master",
-    alwaysOpenEditor: false,
-    shouldAskForChangeTypes: false,
     updateInternalDependencies: "patch",
     ignore: [],
     bumpVersionsWithWorkspaceProtocolOnly: false,
@@ -62,8 +60,6 @@ let defaults = {
   commit: false,
   access: "restricted",
   baseBranch: "master",
-  alwaysOpenEditor: false,
-  shouldAskForChangeTypes: false,
   updateInternalDependencies: "patch",
   ignore: [],
   ___experimentalUnsafeOptions_WILL_CHANGE_IN_PATCH: {

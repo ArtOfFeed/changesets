@@ -8,12 +8,10 @@ import {
   Release,
   PackageJSON,
   ChangesetWithConfirmed,
-  Config,
   VersionType
 } from "@changesets/types";
 import { Package } from "@manypkg/get-packages";
 import { ExitError } from "@changesets/errors";
-import { ChangesetsWithChangeTypes } from "./changeTypes";
 
 const { green, yellow, red, bold, blue, cyan, gray } = chalk;
 
@@ -161,11 +159,9 @@ function logRestWillBeBumped(
 
 export default async function createChangeset(
   changedPackages: Array<string>,
-  allPackages: Package[],
-  config: Config
-): Promise<ChangesetWithConfirmed | Array<ChangesetWithConfirmed>> {
+  allPackages: Package[]
+): Promise<ChangesetWithConfirmed> {
   const releases: Array<Release> = [];
-  const changeset = new ChangesetsWithChangeTypes(config);
 
   if (allPackages.length > 1) {
     const packagesToRelease = await getPackagesToRelease(
@@ -178,8 +174,6 @@ export default async function createChangeset(
     );
 
     let pkgsLeftToGetBumpTypeFor = new Set(packagesToRelease);
-
-    await changeset.setChangeTypeList();
 
     for (const [i, bump] of bumpTypes.entries()) {
       const packages = [...pkgsLeftToGetBumpTypeFor];
@@ -214,8 +208,6 @@ export default async function createChangeset(
   } else {
     let pkg = allPackages[0];
 
-    await changeset.setChangeTypeList();
-
     let type = await cli.askList(
       `What kind of change is this for ${green(
         pkg.packageJson.name
@@ -230,18 +222,13 @@ export default async function createChangeset(
     }
     releases.push({ name: pkg.packageJson.name, type });
   }
-  await changeset.setReleases(releases);
-  await changeset.setChangesetList();
-  await changeset.setSummaries();
-  const changesets = await changeset.getFinalChangesetList();
-  if (changesets?.length) return changesets;
 
   log(
     "Please enter a summary for this change (this will be in the changelogs)."
   );
   log(chalk.gray("  (submit empty line to open external editor)"));
 
-  let summary = config.alwaysOpenEditor ? "" : await cli.askQuestion("Summary");
+  let summary = await cli.askQuestion("Summary");
   if (summary.length === 0) {
     try {
       summary = cli.askQuestionWithEditor(
